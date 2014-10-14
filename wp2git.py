@@ -69,7 +69,7 @@ def main():
             text = rev.get('*','').encode('utf8')
             committer = '%s@%s' % (rev['user'].encode('utf8'), site.host[1])
             ts = time.mktime(rev['timestamp'])
-            print(" >> Revision %d by %s at %s: %s" % (id, rev['user'], rev['comment'], time.ctime(ts)), file=stderr)
+            print((" >> Revision %d by %s at %s: %s" % (id, rev['user'], time.ctime(ts), rev['comment'])).encode('ascii','xmlcharrefreplace'), file=stderr)
 
             summary = '%s\n\nURL: %s://%s%sindex.php?oldid=%d' % (rev['comment'].encode('utf8') or '<blank>', site.host[0], site.host[1], site.path, id)
 
