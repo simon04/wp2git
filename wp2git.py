@@ -5,6 +5,7 @@ from sys import stderr, stdout
 import argparse
 import mwclient
 import subprocess as sp
+import urlparse
 import os, locale, time
 
 lang = locale.getdefaultlocale()[0].split('_')[0] or ''
@@ -23,7 +24,7 @@ def parse_args():
     p.add_argument('-o','--outdir', help='Output directory')
     g=p.add_mutually_exclusive_group()
     g.add_argument('--lang', default=lang, help='Wikipedia language code (default %(default)s)')
-    g.add_argument('--site', help='Alternate site (e.g. commons.wikimedia.org)')
+    g.add_argument('--site', help='Alternate site (e.g. http://commons.wikimedia.org[/w/])')
     return p, p.parse_args()
 
 def main():
@@ -31,14 +32,17 @@ def main():
 
     # Connect to site with mwclient
     if args.site is not None:
-        s = args.site
+        scheme, host, path = urlparse.urlparse(args.site, scheme='http')[:3]
+        if path=='':
+            path = '/w/'
+        elif not path.endswith('/'):
+            path += '/'
     elif args.lang is not None:
-        s = '%s.wikipedia.org' % args.lang
+        scheme, host, path = 'http', '%s.wikipedia.org' % args.lang, '/w/'
     else:
-        s = 'wikipedia.org'
-
-    site = mwclient.Site(s)
-    print('Connected to site %s.' % s, file=stderr)
+        scheme, host, path = 'http', 'wikipedia.org', '/w/'
+    site = mwclient.Site((scheme, host), path=path)
+    print('Connected to %s://%s%s' % (scheme, host, path), file=stderr)
 
     # Find the page
     page = site.pages[args.article_name]
@@ -63,11 +67,11 @@ def main():
         for rev in page.revisions(dir='newer', prop='ids|timestamp|flags|comment|user|content'):
             id = rev['revid']
             text = rev.get('*','').encode('utf8')
-            committer = '%s@%s' % (rev['user'].encode('utf8'), site.host)
+            committer = '%s@%s' % (rev['user'].encode('utf8'), site.host[1])
             ts = time.mktime(rev['timestamp'])
             print(" >> Revision %d by %s at %s: %s" % (id, rev['user'], rev['comment'], time.ctime(ts)), file=stderr)
 
-            summary = '%s\n\nURL: http://%s%sindex.php?oldid=%d' % (rev['comment'].encode('utf8') or '<blank>', site.host, site.path, id)
+            summary = '%s\n\nURL: %s://%s%sindex.php?oldid=%d' % (rev['comment'].encode('utf8') or '<blank>', site.host[0], site.host[1], site.path, id)
 
             fid.write('commit refs/heads/master\n')
             fid.write('committer <%s> %d +0000\n' % (committer, ts))
