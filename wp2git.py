@@ -62,7 +62,7 @@ def main():
     os.chdir(path)
 
     # Create fast-import data stream
-    with open('fast-import-data', 'w+b') as fid:
+    with open('fast-import-data', 'wb') as fid:
         fid.write('reset refs/heads/master\n')
         for rev in page.revisions(dir='newer', prop='ids|timestamp|flags|comment|user|content'):
             id = rev['revid']
@@ -80,13 +80,10 @@ def main():
             fid.write('data %d\n%s\n' % (len(text), text))
         fid.write('done\n')
 
-        if args.doimport:
-            sp.check_call(['git','init','--bare'])
-            fid.seek(0, 0)
-            sp.check_call(['git', 'fast-import','--quiet'], stdin=fid)
-
     if args.doimport:
-       os.unlink('fast-import-data')
+        sp.check_call(['git','init','--bare'])
+        sp.check_call(['git', 'fast-import','--quiet'], stdin=open(fid.name,"rb"))
+        os.unlink('fast-import-data')
 
 if __name__=='__main__':
     main()
