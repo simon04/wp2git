@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 from __future__ import print_function
 
-from sys import stderr, stdout
+from sys import stderr, stdout, platform
 import argparse
 import mwclient
 import subprocess as sp
@@ -19,13 +19,28 @@ def sanitize(s):
 def parse_args():
     p = argparse.ArgumentParser(description='Create a git repository with the history of the specified Wikipedia article.')
     p.add_argument('article_name')
-    p.add_argument('--no-import', dest='doimport', default=True, action='store_false',
-                        help="Don't invoke git fast-import and only generate the fast-import data")
-    p.add_argument('-o','--outdir', help='Output directory')
+    p.add_argument('-n', '--no-import', dest='doimport', default=True, action='store_false',
+                   help="Don't invoke git fast-import; only generate fast-import data stream")
+    p.add_argument('-o', '--out', help='Output directory or fast-import stream file')
     g=p.add_mutually_exclusive_group()
     g.add_argument('--lang', default=lang, help='Wikipedia language code (default %(default)s)')
     g.add_argument('--site', help='Alternate site (e.g. http://commons.wikimedia.org[/w/])')
-    return p, p.parse_args()
+
+    args = p.parse_args()
+    if not args.doimport:
+        if args.out is None:
+            # http://stackoverflow.com/a/2374507/20789
+            if platform == "win32":
+                import os, msvcrt
+                msvcrt.setmode(stdout.fileno(), os.O_BINARY)
+            args.out = stdout
+        else:
+            try:
+                args.out = argparse.FileType('wb')(args.out)
+            except argparse.ArgumentTypeError as e:
+                p.error(e.args[0])
+
+    return p, args
 
 def main():
     p, args = parse_args()
@@ -48,21 +63,28 @@ def main():
     page = site.pages[args.article_name]
     if not page.exists:
         p.error('Page %s does not exist' % s)
-
-    # Create output directory
     fn = sanitize(args.article_name)
-    if args.outdir is not None:
-        path = args.outdir
+
+    if args.doimport:
+        # Create output directory and pipe to git
+        if args.out is not None:
+            path = args.out
+        else:
+            path = fn
+
+        if os.path.exists(path):
+            p.error('path %s exists' % path)
+        else:
+            os.mkdir(path)
+            os.chdir(path)
+            sp.check_call(['git','init','--bare'])
+            pipe = sp.Popen(['git', 'fast-import','--quiet','--done'], stdin=sp.PIPE)
+            fid = pipe.stdin
     else:
-        path = fn
+        fid = args.out
 
-    if os.path.exists(path):
-        p.error('Path %s exists' % path)
-    os.mkdir(path)
-    os.chdir(path)
-
-    # Create fast-import data stream
-    with open('fast-import-data', 'wb') as fid:
+    # Output fast-import data stream to file or git pipe
+    with fid:
         fid.write('reset refs/heads/master\n')
         for rev in page.revisions(dir='newer', prop='ids|timestamp|flags|comment|user|content'):
             id = rev['revid']
@@ -81,9 +103,7 @@ def main():
         fid.write('done\n')
 
     if args.doimport:
-        sp.check_call(['git','init','--bare'])
-        sp.check_call(['git', 'fast-import','--quiet'], stdin=open(fid.name,"rb"))
-        os.unlink('fast-import-data')
+        pipe.communicate()
 
 if __name__=='__main__':
     main()
