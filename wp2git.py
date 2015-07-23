@@ -93,7 +93,8 @@ def main():
             ts = time.mktime(rev['timestamp'])
             print((" >> Revision %d by %s at %s: %s" % (id, rev.get('user',''), time.ctime(ts), rev['comment'])).encode('ascii','xmlcharrefreplace'), file=stderr)
 
-            summary = '%s\n\nURL: http://%s%sindex.php?oldid=%d' % (rev.get('comment','').encode('utf8') or '<blank>', site.host, site.path, id)
+            summary = '%s\n\nURL: %s://%s%sindex.php?oldid=%d' % (rev.get('comment','').encode('utf8') or '<blank>',
+                site.host[0], site.host[1], site.path, id)
 
             fid.write('commit refs/heads/master\n')
             fid.write('committer <%s> %d +0000\n' % (committer, ts))
