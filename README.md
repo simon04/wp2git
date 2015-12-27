@@ -5,9 +5,10 @@ This program allows you to download and convert any Wikipedia article's history 
 
 ### Usage
 
-    $ wp2git.py article_name
+    $ wp2git.py [--bare] article_name
 
-`wp2git` will create a directory, in which a new bare `git` repository will be created.
+`wp2git` will create a directory, in which a new `git` repository will be created.
+The repository will contain a single file named `article_name.mw`, along with its entire edit history.
 
 Run `wp2git --help` for more options.
 

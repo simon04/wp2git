@@ -19,8 +19,10 @@ def sanitize(s):
 def parse_args():
     p = argparse.ArgumentParser(description='Create a git repository with the history of the specified Wikipedia article.')
     p.add_argument('article_name')
-    p.add_argument('-n', '--no-import', dest='doimport', default=True, action='store_false',
+    g=p.add_mutually_exclusive_group()
+    g.add_argument('-n', '--no-import', dest='doimport', default=True, action='store_false',
                    help="Don't invoke git fast-import; only generate fast-import data stream")
+    g.add_argument('-b', '--bare', action='store_true', help="Import to a bare repository (no working tree)")
     p.add_argument('-o', '--out', help='Output directory or fast-import stream file')
     g=p.add_mutually_exclusive_group()
     g.add_argument('--lang', default=lang, help='Wikipedia language code (default %(default)s)')
@@ -77,7 +79,7 @@ def main():
         else:
             os.mkdir(path)
             os.chdir(path)
-            sp.check_call(['git','init','--bare'])
+            sp.check_call(['git','init'] + (['--bare'] if args.bare else []))
             pipe = sp.Popen(['git', 'fast-import','--quiet','--done'], stdin=sp.PIPE)
             fid = pipe.stdin
     else:
@@ -105,6 +107,8 @@ def main():
 
     if args.doimport:
         pipe.communicate()
+        if not args.bare:
+            sp.check_call(['git','checkout'])
 
 if __name__=='__main__':
     main()
