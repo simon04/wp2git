@@ -88,18 +88,31 @@ def main():
     # Output fast-import data stream to file or git pipe
     with fid:
         fid.write('reset refs/heads/master\n')
-        for rev in page.revisions(dir='newer', prop='ids|timestamp|flags|comment|user|content'):
+        for rev in page.revisions(dir='newer', prop='ids|timestamp|flags|comment|user|userid|content|tags'):
             id = rev['revid']
             text = rev.get('*','').encode('utf8')
-            committer = '%s@%s' % (rev['user'].encode('utf8'), site.host[1])
+            user = rev.get('user','').encode('utf8')
+            user_ = user.replace(' ','_')
+            comment = rev.get('comment','').encode('utf8') or '<blank>'
+            tags = (['minor'] if 'minor' in rev else []) + [tag.encode('utf8') for tag in rev['tags']]
             ts = time.mktime(rev['timestamp'])
-            print((" >> Revision %d by %s at %s: %s" % (id, rev.get('user',''), time.ctime(ts), rev['comment'])).encode('ascii','xmlcharrefreplace'), file=stderr)
 
-            summary = '%s\n\nURL: %s://%s%sindex.php?oldid=%d' % (rev.get('comment','').encode('utf8') or '<blank>',
-                site.host[0], site.host[1], site.path, id)
+            if rev['userid']:
+                committer = '%s <%s@%s>' % (user,user_,host)
+            else:
+                committer = '%s <>' % user
+
+            print((" >> %sRevision %d by %s at %s: %s" % (('Minor ' if 'minor' in rev else ''), id, rev.get('user',''),
+                time.ctime(ts), rev.get('comment',''))).encode('ascii','xmlcharrefreplace'), file=stderr)
+
+            summary = '{comment}\n\nURL: {scheme}://{host}{path}index.php?oldid={id:d}\nEditor: {scheme}://{host}{path}index.php?title=User:{user_}'.format(
+                comment=comment, scheme=scheme, host=host, path=path, id=id, user_=user_)
+
+            if tags:
+                summary += '\nTags: ' + ', '.join(tags)
 
             fid.write('commit refs/heads/master\n')
-            fid.write('committer <%s> %d +0000\n' % (committer, ts))
+            fid.write('committer %s %d +0000\n' % (committer, ts))
             fid.write('data %d\n%s\n' % (len(summary), summary))
             fid.write('M 644 inline %s.mw\n' % fn)
             fid.write('data %d\n%s\n' % (len(text), text))
