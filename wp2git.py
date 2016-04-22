@@ -126,7 +126,7 @@ def main():
             tags = (['minor'] if 'minor' in rev else []) + rev['tags']
             ts = time.mktime(rev['timestamp'])
 
-            if rev['userid']:
+            if 'userid' in rev and rev['userid']:
                 committer = '%s <%s@%s>' % (user, user_, host)
             else:
                 committer = '%s <>' % user
