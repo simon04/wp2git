@@ -32,6 +32,7 @@ def parse_args():
     p = argparse.ArgumentParser(
         description='Create a git repository with the history of the specified Wikipedia article.')
     p.add_argument('article_name')
+
     output = p.add_argument_group('Output options')
     g = output.add_mutually_exclusive_group()
     g.add_argument('-n', '--no-import', dest='doimport', default=True, action='store_false',
@@ -40,12 +41,20 @@ def parse_args():
                    help='Import to a bare repository (no working tree)')
     output.add_argument('-o', '--out',
                         help='Output directory or fast-import stream file')
+
     site = p.add_argument_group('MediaWiki site selection')
     g = site.add_mutually_exclusive_group()
     g.add_argument('--lang', default=locale.getdefaultlocale()[0].split('_')[0] or '',
                    help='Wikipedia language code (default %(default)s)')
     g.add_argument('--site',
                    help='Alternate MediaWiki site (e.g. http://commons.wikimedia.org[/w/])')
+
+    revision = p.add_argument_group('Revision options')
+    revision.add_argument('--expandtemplates', action='store_true', help='Expand templates')
+    revision.add_argument('--start', help='ISO8601 timestamp to start listing from')
+    revision.add_argument('--end', help='ISO8601 timestamp to end listing at')
+    revision.add_argument('--user', help='Only list revisions made by this user')
+    revision.add_argument('--excludeuser', help='Exclude revisions made by this user')
 
     args = p.parse_args()
     if not args.doimport:
@@ -117,7 +126,9 @@ def main():
                 fid.write(s.encode('utf-8'))
         write_bytes_of_string('reset refs/heads/master\n')
         prop = 'ids|timestamp|flags|comment|user|userid|content|tags'
-        for rev in page.revisions(dir='newer', prop=prop):
+        for rev in page.revisions(dir='newer', prop=prop, expandtemplates=args.expandtemplates,
+                                  start=args.start, end=args.end,
+                                  user=args.user, excludeuser=args.excludeuser):
             id = rev['revid']
             text = rev.get('*', '')
             user = rev.get('user', '')
