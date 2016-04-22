@@ -1,11 +1,10 @@
-#!/usr/bin/env python2
-from __future__ import print_function
+#!/usr/bin/env python3
 
 from sys import stderr, stdout, platform
 import argparse
 import mwclient
 import subprocess as sp
-import urlparse
+import urllib.parse
 import os
 import locale
 import time
@@ -47,7 +46,7 @@ def parse_args():
                 import os
                 import msvcrt
                 msvcrt.setmode(stdout.fileno(), os.O_BINARY)
-            args.out = stdout
+            args.out = stdout.buffer
         else:
             try:
                 args.out = argparse.FileType('wb')(args.out)
@@ -62,7 +61,7 @@ def main():
 
     # Connect to site with mwclient
     if args.site is not None:
-        scheme, host, path = urlparse.urlparse(args.site, scheme='http')[:3]
+        scheme, host, path = urllib.parse.urlparse(args.site, scheme='http')[:3]
         if path == '':
             path = '/w/'
         elif not path.endswith('/'):
@@ -100,16 +99,17 @@ def main():
 
     # Output fast-import data stream to file or git pipe
     with fid:
-        fid.write('reset refs/heads/master\n')
+        def write_bytes_of_string(s):
+            fid.write(s.encode())
+        write_bytes_of_string('reset refs/heads/master\n')
         prop = 'ids|timestamp|flags|comment|user|userid|content|tags'
         for rev in page.revisions(dir='newer', prop=prop):
             id = rev['revid']
-            text = rev.get('*', '').encode('utf8')
-            user = rev.get('user', '').encode('utf8')
+            text = rev.get('*', '')
+            user = rev.get('user', '')
             user_ = user.replace(' ', '_')
-            comment = rev.get('comment', '').encode('utf8') or '<blank>'
-            tags = (['minor'] if 'minor' in rev else []) + \
-                [tag.encode('utf8') for tag in rev['tags']]
+            comment = rev.get('comment', '') or '<blank>'
+            tags = (['minor'] if 'minor' in rev else []) + rev['tags']
             ts = time.mktime(rev['timestamp'])
 
             if rev['userid']:
@@ -119,9 +119,8 @@ def main():
 
             msg = ' >> {minor}Revision {id} by {user} at {time}: {comment}'.format(
                 minor='Minor ' if 'minor' in rev else '',
-                id=id, user=rev.get('user', ''), time=time.ctime(ts),
-                comment=rev.get('comment', ''))
-            print(msg.encode('ascii', 'xmlcharrefreplace'), file=stderr)
+                id=id, user=user, time=ts, comment=comment)
+            print(msg, file=stderr)
 
             summary = '\n'.join([
                 '{comment}',
@@ -133,12 +132,12 @@ def main():
             if tags:
                 summary += '\nTags: ' + ', '.join(tags)
 
-            fid.write('commit refs/heads/master\n')
-            fid.write('committer %s %d +0000\n' % (committer, ts))
-            fid.write('data %d\n%s\n' % (len(summary), summary))
-            fid.write('M 644 inline %s.mw\n' % fn)
-            fid.write('data %d\n%s\n' % (len(text), text))
-        fid.write('done\n')
+            write_bytes_of_string('commit refs/heads/master\n')
+            write_bytes_of_string('committer %s %d +0000\n' % (committer, ts))
+            write_bytes_of_string('data %d\n%s\n' % (len(summary.encode()), summary))
+            write_bytes_of_string('M 644 inline %s.mw\n' % fn)
+            write_bytes_of_string('data %d\n%s\n' % (len(text.encode()), text))
+        write_bytes_of_string('done\n')
 
     if args.doimport:
         pipe.communicate()
