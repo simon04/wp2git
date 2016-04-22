@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Downloads and imports Wikipedia page histories to a git repository"""
 
 from __future__ import unicode_literals
 from sys import stderr, stdout, platform
@@ -11,41 +12,46 @@ import time
 from six import print_
 from six.moves import urllib
 
-lang = locale.getdefaultlocale()[0].split('_')[0] or ''
 
+def sanitize_filename(string):
+    """Sanitizes string in order to be used as filename.
 
-def sanitize(s):
+    >>> sanitize_filename('foobar')
+    'foobar'
+    >>> sanitize_filename('foo/*bar:baz')
+    'foo__bar_baz'
+    """
     forbidden = r'?*<>|:\/"'
-    for c in forbidden:
-        s = s.replace(c, '_')
-    return s
+    for char in forbidden:
+        string = string.replace(char, '_')
+    return string
 
 
 def parse_args():
+    """Parses the command line arguments."""
     p = argparse.ArgumentParser(
         description='Create a git repository with the history of the specified Wikipedia article.')
     p.add_argument('article_name')
-    g2 = p.add_argument_group('Output options')
-    g = g2.add_mutually_exclusive_group()
+    output = p.add_argument_group('Output options')
+    g = output.add_mutually_exclusive_group()
     g.add_argument('-n', '--no-import', dest='doimport', default=True, action='store_false',
                    help='Don\'t invoke git fast-import; only generate fast-import data stream')
     g.add_argument('-b', '--bare', action='store_true',
                    help='Import to a bare repository (no working tree)')
-    g2.add_argument('-o', '--out',
-                    help='Output directory or fast-import stream file')
-    g2 = p.add_argument_group('MediaWiki site selection')
-    g = g2.add_mutually_exclusive_group()
-    g.add_argument('--lang', default=lang,
+    output.add_argument('-o', '--out',
+                        help='Output directory or fast-import stream file')
+    site = p.add_argument_group('MediaWiki site selection')
+    g = site.add_mutually_exclusive_group()
+    g.add_argument('--lang', default=locale.getdefaultlocale()[0].split('_')[0] or '',
                    help='Wikipedia language code (default %(default)s)')
-    g.add_argument(
-        '--site', help='Alternate MediaWiki site (e.g. http://commons.wikimedia.org[/w/])')
+    g.add_argument('--site',
+                   help='Alternate MediaWiki site (e.g. http://commons.wikimedia.org[/w/])')
 
     args = p.parse_args()
     if not args.doimport:
         if args.out is None:
             # http://stackoverflow.com/a/2374507/20789
             if platform == 'win32':
-                import os
                 import msvcrt
                 msvcrt.setmode(stdout.fileno(), os.O_BINARY)
             try:
@@ -82,7 +88,7 @@ def main():
     page = site.pages[args.article_name]
     if not page.exists:
         p.error('Page %s does not exist' % args.article_name)
-    fn = sanitize(args.article_name)
+    fn = sanitize_filename(args.article_name)
 
     if args.doimport:
         # Create output directory and pipe to git
