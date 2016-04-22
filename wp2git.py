@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
+from __future__ import unicode_literals
 from sys import stderr, stdout, platform
 import argparse
 import mwclient
 import subprocess as sp
-import urllib.parse
 import os
 import locale
 import time
+from six import print_
+from six.moves import urllib
 
 lang = locale.getdefaultlocale()[0].split('_')[0] or ''
 
@@ -46,7 +48,10 @@ def parse_args():
                 import os
                 import msvcrt
                 msvcrt.setmode(stdout.fileno(), os.O_BINARY)
-            args.out = stdout.buffer
+            try:
+                args.out = stdout.buffer
+            except AttributeError:
+                args.out = stdout
         else:
             try:
                 args.out = argparse.FileType('wb')(args.out)
@@ -61,7 +66,7 @@ def main():
 
     # Connect to site with mwclient
     if args.site is not None:
-        scheme, host, path = urllib.parse.urlparse(args.site, scheme='http')[:3]
+        scheme, host, path = urllib.urlparse(args.site, scheme='http')[:3]
         if path == '':
             path = '/w/'
         elif not path.endswith('/'):
@@ -71,7 +76,7 @@ def main():
     else:
         scheme, host, path = 'http', 'wikipedia.org', '/w/'
     site = mwclient.Site((scheme, host), path=path)
-    print('Connected to %s://%s%s' % (scheme, host, path), file=stderr)
+    print_('Connected to %s://%s%s' % (scheme, host, path), file=stderr)
 
     # Find the page
     page = site.pages[args.article_name]
@@ -99,8 +104,11 @@ def main():
 
     # Output fast-import data stream to file or git pipe
     with fid:
-        def write_bytes_of_string(s):
-            fid.write(s.encode())
+        def utf8len(s):
+            return len(s.encode('utf-8'))
+        def write_bytes_of_string(*args):
+            for s in args:
+                fid.write(s.encode('utf-8'))
         write_bytes_of_string('reset refs/heads/master\n')
         prop = 'ids|timestamp|flags|comment|user|userid|content|tags'
         for rev in page.revisions(dir='newer', prop=prop):
@@ -120,7 +128,7 @@ def main():
             msg = ' >> {minor}Revision {id} by {user} at {time}: {comment}'.format(
                 minor='Minor ' if 'minor' in rev else '',
                 id=id, user=user, time=ts, comment=comment)
-            print(msg, file=stderr)
+            print_(msg, file=stderr)
 
             summary = '\n'.join([
                 '{comment}',
@@ -134,9 +142,9 @@ def main():
 
             write_bytes_of_string('commit refs/heads/master\n')
             write_bytes_of_string('committer %s %d +0000\n' % (committer, ts))
-            write_bytes_of_string('data %d\n%s\n' % (len(summary.encode()), summary))
+            write_bytes_of_string('data %d\n%s\n' % (utf8len(summary), summary))
             write_bytes_of_string('M 644 inline %s.mw\n' % fn)
-            write_bytes_of_string('data %d\n%s\n' % (len(text.encode()), text))
+            write_bytes_of_string('data %d\n%s\n' % (utf8len(text), text))
         write_bytes_of_string('done\n')
 
     if args.doimport:
