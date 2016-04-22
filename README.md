@@ -12,12 +12,15 @@ The repository will contain a single file named `article_name.mw`, along with it
 
 Run `wp2git --help` for more options.
 
+### Analyzing using git
+* Who last changed this line? `git blame article_name.mw`
+* Who introduced this sentence? `git log -p -G "the natural number that succeeds 41"`
+
 ### Requirements
+* [Python](https://www.python.org/) 2 or 3
+* [`git`](https://git-scm.com/) accessible from `PATH`.
+* [`mwclient`](http://github.com/mwclient/mwclient) (use `pip install mwclient`).
 
-`git` should be accessible from `PATH`.
-
-The [`mwclient` package](http://github.com/mwclient/mwclient) must be installed (use `pip install mwclient`).
-
-### Entirely based on
-
-[CyberShadow's version](http://github.com/CyberShadow/wp2git) written in the D language.
+### Credits
+1. [CyberShadow's version](http://github.com/CyberShadow/wp2git) written in the D language.
+2. [dlenski's version](http://github.com/CyberShadow/wp2git) written for Python 2 only.
