@@ -19,8 +19,8 @@ Run `wp2git --help` for more options.
 ### Requirements
 * [Python](https://www.python.org/) 2 or 3
 * [`git`](https://git-scm.com/) accessible from `PATH`.
-* [`mwclient`](http://github.com/mwclient/mwclient) (use `pip install mwclient`).
+* [`mwclient`](https://github.com/mwclient/mwclient) (use `pip install mwclient`).
 
 ### Credits
-1. [CyberShadow's version](http://github.com/CyberShadow/wp2git) written in the D language.
-2. [dlenski's version](http://github.com/CyberShadow/wp2git) written for Python 2 only.
+1. [CyberShadow's version](https://github.com/CyberShadow/wp2git) written in the D language.
+2. [dlenski's version](https://github.com/CyberShadow/wp2git) written for Python 2 only.

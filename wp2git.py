@@ -47,7 +47,7 @@ def parse_args():
     g.add_argument('--lang', default=locale.getdefaultlocale()[0].split('_')[0] or '',
                    help='Wikipedia language code (default %(default)s)')
     g.add_argument('--site',
-                   help='Alternate MediaWiki site (e.g. http://commons.wikimedia.org[/w/])')
+                   help='Alternate MediaWiki site (e.g. https://commons.wikimedia.org[/w/])')
 
     revision = p.add_argument_group('Revision options')
     revision.add_argument('--expandtemplates', action='store_true', help='Expand templates')
@@ -59,7 +59,7 @@ def parse_args():
     args = p.parse_args()
     if not args.doimport:
         if args.out is None:
-            # http://stackoverflow.com/a/2374507/20789
+            # https://stackoverflow.com/a/2374507/20789
             if platform == 'win32':
                 import msvcrt
                 msvcrt.setmode(stdout.fileno(), os.O_BINARY)
@@ -81,15 +81,15 @@ def main():
 
     # Connect to site with mwclient
     if args.site is not None:
-        scheme, host, path = urllib.urlparse(args.site, scheme='http')[:3]
+        scheme, host, path = urllib.urlparse(args.site, scheme='https')[:3]
         if path == '':
             path = '/w/'
         elif not path.endswith('/'):
             path += '/'
     elif args.lang is not None:
-        scheme, host, path = 'http', '%s.wikipedia.org' % args.lang, '/w/'
+        scheme, host, path = 'https', '%s.wikipedia.org' % args.lang, '/w/'
     else:
-        scheme, host, path = 'http', 'wikipedia.org', '/w/'
+        scheme, host, path = 'https', 'wikipedia.org', '/w/'
     site = mwclient.Site((scheme, host), path=path)
     print_('Connected to %s://%s%s' % (scheme, host, path), file=stderr)
 
